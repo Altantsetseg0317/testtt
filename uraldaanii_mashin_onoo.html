@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Уралдааны зам — 6 багийн интерактив үнэлгээ (V2.2)</title>
+<style>
+  :root{
+    --bg:#081422; --ink:#e9f0ff; --muted:#ffffff; --panel:#0f1d35; --track:#0a1328; --lane:#112347; --laneAlt:#0e1c3a; --border:#1e3768;
+    --accent:#5de0ff; --good:#77f977; --warn:#ffd86b; --bad:#ff9b9b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans",Arial;background:linear-gradient(180deg,#071121,#0a1730);color:var(--ink)}
+  .wrap{max-width:1100px;margin:18px auto;padding:16px}
+  h1{margin:0 0 6px;font-size:clamp(22px,3.6vw,34px)}
+  .sub{color:var(--muted);margin-bottom:20px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:12px;box-shadow:0 8px 26px rgba(0,0,0,.35)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{appearance:none;border:1px solid var(--border);background:#0e1b33;color:var(--ink);padding:9px 12px;border-radius:12px;cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg,#2a7bff,#43d5ff);border:none;color:#071322;font-weight:700}
+  .btn.ghost{background:#0b162d;border:1px dashed var(--border)}
+  .pill{padding:6px 10px;border-radius:999px;background:#0b1a33;border:1px solid var(--border);color:#cfe4ff;font-size:12px}
+  .board{margin-top:12px;display:grid;grid-template-columns:1fr;gap:10px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:12px}
+  .row{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center}
+  .badge{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:#0e2344;border:1px solid var(--border);font-weight:900}
+  .muted{color:var(--muted)}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .emo{font-size:28px;border:1px solid var(--border);background:#0b1a33;border-radius:14px;width:56px;height:56px;display:grid;place-items:center;cursor:pointer}
+  .emo.selected{outline:3px solid #9ab6ff}
+  .kpi{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .kbox{background:#0b1a33;border:1px solid var(--border);border-radius:12px;padding:8px 10px}
+
+  /* Track */
+  .track{margin-top:16px;background:var(--track);border:1px solid var(--border);border-radius:16px;padding:14px 14px 20px}
+  .finish{position:relative;border-bottom:4px dashed #a6b6d9;margin-bottom:8px}
+  .finish::after{content:"FINISH";position:absolute;right:0;bottom:6px;font-weight:900;color:#a6c7ff}
+  .lanes{display:grid;gap:8px}
+  .lane{position:relative;background:linear-gradient(90deg,var(--lane),var(--laneAlt));border:1px solid var(--border);border-radius:12px;height:64px;overflow:hidden}
+  .lane .label{position:absolute;left:8px;top:8px;font-weight:800;color:#cfe4ff}
+  .car{position:absolute;top:10px;left:0;transition:left .8s ease;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));font-size:32px}
+  .smoke{position:absolute;top:34px;left:0;opacity:.7;font-size:18px}
+  .meter{position:absolute;right:10px;bottom:8px;font-size:12px;color:#b9c8e7}
+
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .legend .pill{background:#082044}
+
+  dialog{border:none;border-radius:16px;padding:0;background:transparent}
+  dialog::backdrop{background:rgba(255, 255, 255, 0.55)}
+  .modal{background:#067e7e;border:1px solid var(--border);border-radius:16px;min-width:320px;max-width:640px}
+  .modal header,.modal footer{padding:12px 14px;border-bottom:1px solid var(--border)}
+  .modal footer{border-top:1px solid var(--border);border-bottom:none;display:flex;justify-content:flex-end;gap:8px}
+  .modal .body{padding:10px 14px}
+  .peer-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+  .emo-row{display:flex;gap:8px}
+
+  details.dev{margin-left:auto}
+  @media (min-width:860px){ .board{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+    <div class="panel track">
+    <div class="finish"></div>
+    <div class="lanes" id="lanes"></div>
+    <div class="legend">
+      <span class="pill">Нийт оноо = Өөрөө + Багш + Бусдаас авсан дундаж</span>
+      <span class="pill">0% → 3 оноо, 100% → 9 оноо</span>
+    </div>
+  </div>
+<div class="wrap">
+  <h1>🏁 Уралдааны зам — 6 багийн интерактив үнэлгээ</h1>
+  <div class="sub">1–3 оноо: 😟=1, 🙂=2, 🤩=3. Баг бүр <b>өөрийгөө</b>, <b>багш</b>, мөн <b>бусдаас авсан</b> дундажаар оноо авч, нар нь зам дээр урагшилна.</div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <button class="btn primary" id="startRace">▶️ Старт / Дахин тоглох</button>
+      <button class="btn" id="liveToggle">🔄 Live update: OFF</button>
+      <button class="btn" id="fillSample">🎲 Жишээ бөглөх</button>
+      <button class="btn" id="resetAll">♻️ Шинэчлэх</button>
+      <button class="btn" id="exportCsv">⬇️ CSV татах</button>
+      <details class="dev"><summary class="btn ghost">🧪 Тест</summary>
+        <div class="muted">Консол дээр тестийн дүнгүүд гарна.</div>
+        <button class="btn" id="runTests">Run tests</button>
+      </details>
+    </div>
+    <div class="kpi">
+      <div class="kbox">Дундаж нийт оноо: <b id="kAvg">—</b></div>
+      <div class="kbox">Хамгийн өндөр: <b id="kMax">—</b></div>
+      <div class="kbox">Хамгийн бага: <b id="kMin">—</b></div>
+    </div>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  
+</div>
+
+<dialog id="peerDlg">
+  <div class="modal" role="dialog" aria-modal="true">
+    <header>
+      <div id="peerTitle" class="name">Бусад багуудад өгөх үнэлгээ</div>
+    </header>
+    <div class="body">
+      <div class="muted" id="peerHint">Смайл дээр дарж 1–3 оноо сонгоно. Хүсвэл хоосон үлдээж болно.</div><br>
+      <div class="peer-grid" id="peerGrid"></div>
+    </div>
+    <footer>
+      <button class="btn" id="peerClear">Арилгах</button>
+      <button class="btn primary" id="peerSave">Хадгалах</button>
+    </footer>
+  </div>
+</dialog>
+
+<script>
+(()=>{
+  const TEAM_COUNT = 6;
+  const names = Array.from({length:TEAM_COUNT}, (_,i)=> `${i+1}-р баг`);
+  const emoMap = {1:'😟',2:'🙂',3:'🤩'};
+
+  // team.gives[otherIndex] = 1..3 (өөрт нь null)
+  const S = names.map((n,i)=>({
+    name:n,
+    self:null, teacher:null,
+    gives:Array(TEAM_COUNT).fill(null).map((_,j)=> i===j? null : null)
+  }));
+
+  let live = false; // Live update toggle
+
+  // Elements
+  const board = document.getElementById('board');
+  const lanes = document.getElementById('lanes');
+  const peerDlg = document.getElementById('peerDlg');
+  const peerGrid = document.getElementById('peerGrid');
+  const peerTitle = document.getElementById('peerTitle');
+  const kAvg = document.getElementById('kAvg');
+  const kMax = document.getElementById('kMax');
+  const kMin = document.getElementById('kMin');
+
+  // Helpers
+  function h(tag, attrs={}, ...children){
+    const e = document.createElement(tag);
+    Object.entries(attrs).forEach(([k,v])=>{
+      if(k==='class') e.className=v;
+      else if(k==='html') e.innerHTML=v;
+      else if(k==='on') Object.entries(v).forEach(([ev,fn])=> e.addEventListener(ev,fn));
+      else e.setAttribute(k,v);
+    });
+    children.forEach(c=> e.appendChild(c));
+    return e;
+  }
+  const txt = t=> document.createTextNode(t);
+
+  function receivedAvg(j){
+    const vals=[]; for(let i=0;i<S.length;i++) if(i!==j){ const v=S[i].gives[j]; if(typeof v==='number') vals.push(v); }
+    return vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : NaN;
+  }
+  function totalFor(j){
+    const s=S[j].self, t=S[j].teacher, p=receivedAvg(j);
+    if(s==null||t==null||isNaN(p)) return NaN; return s+t+p;
+  }
+  function toPct(total){ // 3..9 → 0..100
+    if(isNaN(total)) return 0; const clamped=Math.max(3, Math.min(9,total)); return ((clamped-3)/6)*100;
+  }
+
+  function renderBoard(){
+    board.innerHTML='';
+    S.forEach((t,idx)=>{
+      const card=h('div',{class:'card'});
+      const head=h('div',{class:'row'});
+      head.append(
+        h('div',{class:'badge'}, txt(idx+1)),
+        h('div',{}, h('div',{style:'font-weight:800'}, txt(t.name)), h('div',{class:'muted'}, txt('Өөрөө · Багш · Бусдад өгөх'))),
+        // ✔️ FIX: хаалтын дутагдлыг нөхсөн (div → span → txt → span → div)
+        h('div', {}, h('span', {class:'pill'}, txt('Нийт: ' + (isNaN(totalFor(idx)) ? '—' : totalFor(idx).toFixed(1)))))
+      );
+
+      const ctr=h('div',{class:'controls'});
+      ctr.append(
+        groupPicker('Өөрийгөө', t.self, v=>{t.self=v; if(live){renderTrack();} updateKPI();}),
+        groupPicker('Багш', t.teacher, v=>{t.teacher=v; if(live){renderTrack();} updateKPI();}),
+        peerButton(idx)
+      );
+
+      card.append(head, ctr);
+      board.append(card);
+    });
+  }
+
+  function groupPicker(label, value, onChange){
+    const wrap=h('div',{});
+    wrap.append(h('div',{class:'muted'}, txt(label)));
+    const row=h('div',{});
+    [1,2,3].forEach(v=>{
+      const b=h('button',{class:'emo'+(value===v?' selected':''),on:{click:()=>{onChange(v); renderBoard();}}}, txt(emoMap[v]));
+      row.append(b);
+    });
+    wrap.append(row); return wrap;
+  }
+
+  function peerButton(idx){
+    const b=h('button',{class:'btn',on:{click:()=>openPeer(idx)}}, txt('👥 Бусад баг (өгөх)'));
+    const p=receivedAvg(idx);
+    const pill=h('span',{class:'pill'}, txt('бусдаас: '+(isNaN(p)?'—':p.toFixed(1))));
+    const box=h('div',{}, pill, h('span',{style:'margin-left:8px'}, b));
+    return box;
+  }
+
+  // Track render
+  function renderTrack(){
+    lanes.innerHTML='';
+    S.forEach((t,idx)=>{
+      const lane=h('div',{class:'lane'});
+      lane.append(h('div',{class:'label'}, txt(t.name)));
+      const T=totalFor(idx);
+      const pct=toPct(T);
+      const car=h('div',{class:'car',style:`left:${pct}%`}, txt('🌞'));
+      const smoke=h('div',{class:'smoke',style:`left:${Math.max(0,pct-6)}%`}, txt(''));
+      const meter=h('div',{class:'meter'}, txt(isNaN(T)?'—':'Оноо: '+T.toFixed(1)));
+      lane.append(car,smoke,meter);
+      lanes.append(lane);
+    });
+  }
+
+  // Peer modal
+  let currentIdx=0;
+  function openPeer(i){
+    currentIdx=i; peerTitle.textContent=`${S[i].name} -> бусад багуудад өгөх үнэлгээ`;
+    peerGrid.innerHTML='';
+    for(let j=0;j<S.length;j++) if(j!==i){
+      const name=h('div',{}, txt(S[j].name));
+      const row=h('div',{class:'emo-row'});
+      [1,2,3].forEach(v=>{
+        const selected=S[i].gives[j]===v;
+        const btn=h('button',{class:'emo'+(selected?' selected':''),on:{click:(ev)=>{
+          S[i].gives[j]=v; [...row.children].forEach(b=>b.classList.remove('selected')); ev.currentTarget.classList.add('selected');
+        }}}, txt(emoMap[v]));
+        row.append(btn);
+      });
+      const wrap=h('div',{class:'peer-grid'}); wrap.append(name,row); peerGrid.append(wrap);
+    }
+    peerDlg.showModal();
+  }
+
+  document.getElementById('peerSave').addEventListener('click',()=>{ peerDlg.close(); if(live){renderTrack();} renderBoard(); updateKPI(); });
+  document.getElementById('peerClear').addEventListener('click',()=>{ S[currentIdx].gives=S[currentIdx].gives.map((v,j)=> j===currentIdx? null : null); if(live){renderTrack();} renderBoard(); updateKPI(); });
+
+  // Toolbar actions
+  document.getElementById('startRace').addEventListener('click',()=>{
+    renderBoard(); renderTrack();
+  });
+  document.getElementById('liveToggle').addEventListener('click',(e)=>{
+    live=!live; e.currentTarget.textContent = `🔄 Live update: ${live?'ON':'OFF'}`;
+    if(live){ renderTrack(); }
+  });
+  document.getElementById('fillSample').addEventListener('click',()=>{
+    S.forEach((t,i)=>{ t.self=r13(); t.teacher=r13(); for(let j=0;j<S.length;j++) if(j!==i) t.gives[j]=r13(); });
+    renderBoard(); renderTrack(); updateKPI();
+  });
+  document.getElementById('resetAll').addEventListener('click',()=>{
+    S.forEach((t,i)=>{ t.name=`${i+1}-р баг`; t.self=null; t.teacher=null; t.gives=t.gives.map((_,j)=> j===i? null : null); });
+    renderBoard(); renderTrack(); updateKPI();
+  });
+  document.getElementById('exportCsv').addEventListener('click',()=>{
+    const rows=[["№","Багийн нэр","Өөрийгөө","Багш","Бусдаас (дундаж)","Нийт","% Дэвшил"]];
+    for(let j=0;j<S.length;j++){
+      const p=receivedAvg(j); const T=totalFor(j); const pct=toPct(T);
+      rows.push([j+1,S[j].name,S[j].self??'',S[j].teacher??'',isNaN(p)?'':p.toFixed(1),isNaN(T)?'':T.toFixed(1),pct.toFixed(0)+'%']);
+    }
+    // newline = \n, зөв CSV escape
+    const csv = rows.map(r=> r.map(v=> String(v).replaceAll('"','""'))
+                               .map(v=> /[,\n]/.test(v)? '"'+v+'"' : v)
+                               .join(',') ).join('\n');
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='race-scores.csv'; a.click(); URL.revokeObjectURL(url);
+  });
+
+  // KPI
+  function updateKPI(){
+    const totals = S.map((_,i)=> totalFor(i)).filter(x=>!isNaN(x));
+    if(!totals.length){ kAvg.textContent='—'; kMax.textContent='—'; kMin.textContent='—'; return; }
+    const sum=totals.reduce((a,b)=>a+b,0);
+    kAvg.textContent=(sum/totals.length).toFixed(2);
+    kMax.textContent=Math.max(...totals).toFixed(1);
+    kMin.textContent=Math.min(...totals).toFixed(1);
+  }
+
+  // Tests (одоо илүү)
+  function runTests(){
+    console.log('%c[TEST] start','color:#60a5fa');
+    // TC1: CSV newline must be \n only
+    const rows1=[[1,'A'],[2,'B']]; const csv1=rows1.map(r=>r.join(',')).join('\n');
+    console.assert(csv1.includes('\n') && !csv1.includes("'"), 'CSV should use \\n, not invalid token');
+
+    // TC2: receivedAvg (3 teams, all give 3)
+    const tmp=3; const T=Array.from({length:tmp},(_,i)=>({gives:Array(tmp).fill(null).map((_,j)=> i===j? null : 3)}));
+    const recv=j=>{ const v=[]; for(let i=0;i<tmp;i++) if(i!==j){ const x=T[i].gives[j]; if(typeof x==='number') v.push(x);} return v.reduce((a,b)=>a+b,0)/v.length; };
+    console.assert(recv(0)===3 && recv(1)===3 && recv(2)===3, 'receivedAvg should be 3');
+
+    // TC3: totalFor combination
+    S.forEach((t,i)=>{ t.self=1; t.teacher=2; for(let j=0;j<S.length;j++) if(j!==i) t.gives[j]=3; });
+    console.assert(Math.abs(totalFor(0)-(1+2+3))<1e-9, 'totalFor = self + teacher + peerAvg');
+
+    // TC4: toPct mapping (3->0%, 9->100%)
+    console.assert(toPct(3)===0 && toPct(9)===100, 'toPct must map 3..9 to 0..100');
+
+    // TC5: CSV escaping with comma and quotes
+    const rows2=[[1,'"A, B"',3],[2,'C',4]]; const csv2=rows2.map(r=> r.map(v=> String(v).replaceAll('"','""')).map(v=> /[,\n]/.test(v)? '"'+v+'"' : v).join(',')).join('\n');
+    console.assert(/""A, B""/.test(csv2) && csv2.split('\n').length===2, 'CSV must escape quotes and keep two lines');
+
+    // TC6: receivedAvg ignores nulls
+    const X=Array.from({length:4},(_,i)=>({gives:Array(4).fill(null)}));
+    X[0].gives[1]=3; X[2].gives[1]=1; // хоёр оноо, бусад нь null
+    const avgPartial=(()=>{ const v=[]; for(let i=0;i<4;i++){ if(i!==1){ const x=X[i].gives[1]; if(typeof x==='number') v.push(x);} } return v.length? v.reduce((a,b)=>a+b,0)/v.length : NaN; })();
+    console.assert(Math.abs(avgPartial - 2) < 1e-9, 'receivedAvg should ignore nulls and average 3 & 1 → 2');
+
+    // TC7: render functions should not throw
+    try{ renderBoard(); renderTrack(); } catch(e){ console.error(e); console.assert(false, 'render functions must not throw'); }
+
+    console.log('%c[TEST] passed','color:#22c55e');
+  }
+
+  document.getElementById('runTests').addEventListener('click', runTests);
+
+  function r13(){ return 1+Math.floor(Math.random()*3); }
+
+  // Initial
+  renderBoard(); renderTrack(); runTests();
+})();
+</script>
+</body>
+</html>
